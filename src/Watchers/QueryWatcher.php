@@ -30,8 +30,7 @@ class QueryWatcher extends Watcher
     {
         $time = $event->time;
 
-        $trace = StackTrace::get();
-        $caller = $trace->firstNonVendor([ 'laravel', 'illuminate' ]);
+        $caller = $this->getCallerFromStackTrace();
 
         Telescope::recordQuery(IncomingEntry::make([
             'connection' => $event->connectionName,
@@ -39,8 +38,8 @@ class QueryWatcher extends Watcher
             'sql' => $event->sql,
             'time' => number_format($time, 2),
             'slow' => isset($this->options['slow']) && $time >= $this->options['slow'],
-            'file' => $caller->shortPath,
-            'line' => $caller->line,
+            'file' => $caller['file'],
+            'line' => $caller['line'],
         ])->tags($this->tags($event)));
     }
 
@@ -64,5 +63,23 @@ class QueryWatcher extends Watcher
     protected function formatBindings($event)
     {
         return $event->connection->prepareBindings($event->bindings);
+    }
+
+    /**
+     * Find the first frame in the stack trace outside of Telescope/Laravel
+     *
+     * @return array
+     */
+    protected function getCallerFromStackTrace()
+    {
+        // Get stack trace without objects or args
+        $trace = collect(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS));
+        // Remove the first frame from the trace (the line above)
+        $trace->forget(0);
+
+        // Get the first frame that has a file path outside of {base_path}/vendor
+        return $trace->first(function ($frame) {
+            return strpos(array_get($frame, 'file'), base_path('vendor')) !== 0;
+        }, ['file' => 'Unknown', 'line' => 0]);
     }
 }
