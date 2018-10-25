@@ -2,6 +2,7 @@
 
 namespace Laravel\Telescope\Watchers;
 
+use Laravel\Telescope\StackTrace;
 use Laravel\Telescope\Telescope;
 use Laravel\Telescope\IncomingEntry;
 use Illuminate\Database\Events\QueryExecuted;
@@ -29,12 +30,17 @@ class QueryWatcher extends Watcher
     {
         $time = $event->time;
 
+        $trace = StackTrace::get();
+        $caller = $trace->firstNonVendor([ 'laravel', 'illuminate' ]);
+
         Telescope::recordQuery(IncomingEntry::make([
             'connection' => $event->connectionName,
             'bindings' => $this->formatBindings($event),
             'sql' => $event->sql,
             'time' => number_format($time, 2),
             'slow' => isset($this->options['slow']) && $time >= $this->options['slow'],
+            'file' => $caller->shortPath,
+            'line' => $caller->line,
         ])->tags($this->tags($event)));
     }
 
