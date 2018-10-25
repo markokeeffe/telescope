@@ -2,7 +2,6 @@
 
 namespace Laravel\Telescope\Watchers;
 
-use Laravel\Telescope\StackTrace;
 use Laravel\Telescope\Telescope;
 use Laravel\Telescope\IncomingEntry;
 use Illuminate\Database\Events\QueryExecuted;
